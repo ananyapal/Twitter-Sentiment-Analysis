@@ -1,0 +1,1905 @@
+﻿PROGRAM 
+
+
+
+DB.java
+
+
+package a;
+
+importjava.sql.Connection;
+importjava.sql.DriverManager;
+importjava.sql.SQLException;
+
+public class DB {
+
+	static Connection con = null;
+	public static Connection getConnection() 
+	{
+		try
+		{
+			Class.forName("com.mysql.jdbc.Driver");
+			con = DriverManager.getConnection("jdbc:mysql://localhost:3306/twee", "root", "tiger");
+			
+		} 
+		catch (SQLException e) 
+		{
+				e.printStackTrace();
+		} 
+		catch (ClassNotFoundException e) 
+		{
+				e.printStackTrace();
+		}
+		return con;
+	}
+	public static void closeConnection()
+	{
+		try
+		{
+			con.close();
+		} 
+		catch (SQLException e) 
+		{
+			e.printStackTrace();
+		}
+	}
+}
+
+
+
+
+
+
+NLP.java
+
+package a;
+
+importedu.stanford.nlp.ling.CoreAnnotations;
+importedu.stanford.nlp.neural.rnn.RNNCoreAnnotations;
+importedu.stanford.nlp.pipeline.Annotation;
+importedu.stanford.nlp.pipeline.StanfordCoreNLP;
+importedu.stanford.nlp.sentiment.SentimentCoreAnnotations;
+import edu.stanford.nlp.sentiment.SentimentCoreAnnotations.SentimentAnnotatedTree;
+importedu.stanford.nlp.trees.Tree;
+importedu.stanford.nlp.util.CoreMap;
+
+public class NLP {
+staticStanfordCoreNLP pipeline;
+public static void init() 
+    {
+pipeline = new StanfordCoreNLP("Configure.properties");
+    }
+public static intcomputeSentiment(String text)
+    {
+	int score = 2; // Default as Neutral. 1 = Negative, 2 = Neutral, 3 = Positive
+	String scoreStr; 
+	Annotation annotation = pipeline.process(text);
+	for(CoreMap sentence : annotation.get(CoreAnnotations.SentencesAnnotation.class))
+	{
+		scoreStr = sentence.get(SentimentCoreAnnotations.SentimentClass.class);
+		Tree tree = sentence.get(SentimentAnnotatedTree.class);
+		score = RNNCoreAnnotations.getPredictedClass(tree);
+		System.out.println(scoreStr + "\t\t" + score + "\t" + sentence);
+	}
+	return(score);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Operations.java
+
+package a;
+
+importjava.sql.Connection;
+importjava.sql.Date;
+importjava.sql.PreparedStatement;
+importjava.sql.ResultSet;
+importjava.sql.SQLException;
+importjava.sql.Statement;
+importjava.util.ArrayList;
+
+public class Operations {
+
+//Create doesn't work
+	
+	public void Create()
+	{
+		Connection con = DB.getConnection();
+		Statement stmt=null;
+	
+		try
+		{
+		stmt=con.createStatement();  
+
+			stmt.executeUpdate("create database twee");  
+			stmt.executeUpdate("use twee");  
+			stmt.executeUpdate("create table twit(name varchar(30) not null, dd Date, tweet varchar(150) not null )");
+
+		} 
+		catch (SQLException e) 
+		{
+			e.printStackTrace();
+		}
+		finally {
+		if (stmt != null) {
+		try {
+		stmt.close();
+		        } catch (SQLException e) {
+		        } // nothing we can do
+		      }
+		if (stmt != null) {
+		try {
+		stmt.close();
+		        } catch (SQLException e) {
+		        } 
+		      }
+		    }
+}
+	
+	publicint Insert(Tweet tp) 
+	{
+		introwsInserted = 0;
+
+		Connection con = DB.getConnection();
+				
+		try
+		{
+			PreparedStatementps = con.prepareStatement("insert into twit values(?,?,?)");
+			ps.setString(1, tp.name);
+			
+			ps.setDate(2, tp.dd);			
+		
+			ps.setString(3, tp.tweet);			
+
+			rowsInserted = ps.executeUpdate();			//Query is getting fired on SQL database
+			
+			con.close();
+		} 
+		catch (SQLException e) 
+		{
+			e.printStackTrace();
+		}
+		
+		returnrowsInserted;
+	}
+	
+	Tweet Search(String name)
+	{
+		Tweet tw = null;
+		
+		Connection con = DB.getConnection();
+		try
+		{
+			PreparedStatementps = con.prepareStatement("Select * from twit where name = ?");
+			//ps.setString(1,"JazzySpreckles" );
+			ps.setString(1,name);
+
+			ResultSetrs = ps.executeQuery();
+			if(rs.next())
+			{
+				tw = new Tweet(rs.getString("name"),rs.getDate("dd"), rs.getString("tweet"));
+
+			}
+			
+			con.close();
+}
+		catch (SQLException e) 
+		{
+			e.printStackTrace();
+		}
+		
+		Return tw;
+	}
+	
+	ArrayList<Tweet>Display()
+	{
+		ArrayList<Tweet>allData = new ArrayList<Tweet>();
+		
+		Connection con = DB.getConnection();
+		try
+		{
+			PreparedStatementps = con.prepareStatement("Select * from twit");
+			ResultSetrs = ps.executeQuery();
+			while(rs.next())
+			{
+
+				Tweet tw = new Tweet(rs.getString("name"),rs.getDate("dd"),rs.getString("tweet"));
+
+				allData.add(tw);
+			}
+			
+			con.close();
+		} 
+		catch (SQLException e) 
+		{
+			e.printStackTrace();
+		}
+		returnallData;	
+}
+
+}
+
+	
+
+
+
+
+
+
+
+
+
+
+Tweet.java
+
+package a;
+
+importjava.sql.Date;
+
+publicclass Tweet {
+
+	public String name;
+	public Date dd;
+	public String tweet;
+
+	public Tweet()
+	{
+	name=null;
+	dd=null;
+	tweet=null;
+	}
+	
+	public Tweet(String name, Date dd, String tweet) 
+	{
+		this.name = name;
+		this.dd = dd;
+		this.tweet = tweet;
+	}
+
+	publicvoid display() 
+	{
+		
+		System.out.println("\n------------------------------------------------------------------------------------------------------------");
+		System.out.println("\nName: "+this.name);
+		System.out.println("\nDate: "+this.dd);
+		System.out.println("\nTweet: "+this.tweet);
+	}
+	
+}
+
+
+
+
+
+
+
+
+
+
+
+
+TwitterStreamClass.java
+
+package a;
+
+importjava.io.InputStreamReader;
+importjava.util.ArrayList;
+importjava.util.Date;
+importjava.util.List;
+importjava.util.Scanner;
+
+import twitter4j.Query;
+import twitter4j.QueryResult;
+import twitter4j.Status;
+import twitter4j.Twitter;
+import twitter4j.TwitterException;
+import twitter4j.TwitterFactory;
+import twitter4j.conf.ConfigurationBuilder;
+
+
+public class TwitterStreamClass {
+	
+	public static void main(String[] args) throws NumberFormatException, TwitterException   {
+	
+	int ch;
+	Scanner sc=new Scanner(new InputStreamReader(System.in));	
+	Operations op=new Operations();
+	ArrayList<Tweet>tt=op.Display();
+
+
+ConfigurationBuildercb = new ConfigurationBuilder();
+cb.setDebugEnabled(true);
+cb.setOAuthConsumerKey("Oa6CxrOdy61gRhBcFLFtiDOtN");
+cb.setOAuthConsumerSecret("UNACeL7npWUgSxa37q6tNgUGw5W9b3AMUT1eN31IKV3XueLzC4");
+cb.setOAuthAccessToken("82365475-2jwmlThn8sq5yCQyjIqYJ55cpl5liMiBEzZVDlmZN");
+cb.setOAuthAccessTokenSecret("lPvZEwhqA7TPoEbDgMAqaNHqBX0JD3J9Mb4TdGs9992tS");
+
+//             TwitterStreamtwitterStream = new TwitterStreamFactory(cb.build()).getInstance();
+
+Twitter  twitter = new TwitterFactory(cb.build()).getInstance();
+
+System.out.println("\nMENU\n1.Insert into Mysqldatabse\n2.Search by Username\n3.Display all tweets stored\n4.Sentiment Analysis\nEnter your choice:\n");
+ch=sc.nextInt();
+
+switch(ch)
+     {
+
+case 1:
+             String username;
+	 String profileLocation;
+	 String content;
+	 Date dd;		 //java.util.Date
+	
+        Query query = new Query("happy");
+      //  Datedate = new Date();
+        //String modifiedDate= new SimpleDateFormat("yyyymmdd").format(date);
+query.setSince("2017-10-07");
+query.setUntil("2017-10-08");
+
+QueryResult result;
+
+do {
+
+result = twitter.search(query);
+            List<Status> tweets = result.getTweets(); 
+for (Status tweet : tweets) {
+	username=tweet.getUser().getScreenName();
+	profileLocation=tweet.getUser().getLocation();
+	content=tweet.getText();
+	dd=tweet.getCreatedAt();
+	System.out.println("\n"+username);
+	System.out.println("\n"+profileLocation);
+	System.out.println("\n"+dd);
+	System.out.println("\n"+content);
+	
+	
+	java.sql.DatesqlDate = new java.sql.Date(dd.getTime()); //Converting java.util.Date to java.sql.Date
+
+	System.out.println("\n--------------------------------------------------------------------");
+
+	Tweet tp=new Tweet(username, sqlDate, content);
+		
+		op.Insert(tp);
+                }
+              } while ((query = result.nextQuery()) != null); 
+break;
+
+case 2:
+	
+	System.out.println("\nEnter username to search: ");
+	 String s=sc.next();
+	
+	 Tweet tp=new Tweet("",null,"");
+		
+		tp=op.Search(s);
+		
+	tp.display();
+	break;
+	
+case 3:
+				
+	for (int i = 0; i <tt.size(); i++) 
+	 {
+             Tweet tweet = tt.get(i);
+tweet.display();
+         }    	
+	break;
+	
+case 4: 
+	
+	NLP.init();
+		for(Tweet t1 : tt) 
+	 {
+		NLP.computeSentiment(t1.tweet);
+	
+	 }
+	
+	break;
+	
+default: System.out.println("Wrong choice.");
+	
+}}
+
+
+
+
+
+
+
+Configure.properties
+
+
+annotators = tokenize,ssplit,parse,sentiment
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+CORE DUMP
+
+
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+Your MySQL connection id is 54
+Server version: 5.5.16 MySQL Community Server (GPL)
+
+Copyright (c) 2000, 2011, Oracle and/or its affiliates. All rights reserved.
+
+Oracle is a registered trademark of Oracle Corporation and/or its
+affiliates. Other names may be trademarks of their respective
+owners.
+
+Type 'help;' or '\h' for help.Type '\c' to clear the current input statement.
+
+mysql> show databases;
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| db                 |
+| jdbc               |
+| mysql              |
+| performance_schema |
+| test               |
+| twee               |
++--------------------+
+7 rows in set (0.07 sec)
+
+mysql> use twee;
+Database changed
+mysql> show tables;
++----------------+
+| Tables_in_twee |
++----------------+
+| twit           |
++----------------+
+1 row in set (0.01 sec)
+
+mysql> select * from twit;
++-----------------+------------+------------------------------------------------------------------------------------------------------------------------------------------------------+
+| name            | dd         | tweet                                                                                                                                                |
++-----------------+------------+------------------------------------------------------------------------------------------------------------------------------------------------------+
+| relentless_omar | 2017-10-08 | RT @gucci1017: Be happy You Deserve it                                                                                                               |
+| Biebofriends    | 2017-10-08 | RT @itakejustin: Music mondays were such a blessing I really had a reason to wake up at 6am and be happy for the rest of the week                    |
+| AyeeRichiee     | 2017-10-08 | RT @datPMFmalik: Happy birthday bro @AyeeRichiee ?? #morelife                                                                                        |
+| GivingLoveDaily | 2017-10-08 | RT @FactSoup: Just do whatever makes you happy.                                                                                                      |
+| lykaaamarieee   | 2017-10-08 | RT @Lloydyhoody: I am more than happy ?????????                                                                                                      |
+| awelab1956      | 2017-10-08 | RT @Shelster011: Happy Access Hollywood Pussygate Day! https://t.co/xdl6w5Tupi                                                                       |
+| Paisley__15     | 2017-10-08 | RT @gucci1017: Be happy You Deserve it                                                                                                               |
+| TheGreatAlxndra | 2017-10-08 | There are so many things that can make you happy. Don't dwell too much on things that make you sad.                                                  |
+| thaisserafym    | 2017-10-08 | RT @kimjunmyeonnews: thank you for updating the exol website constantly & share every precious moments of u w exols! ???
+
+happyanniversary,à        |
+| sunkissedwun    | 2017-10-08 | happy birthday @daaylivess in sha'Allah many more years of joy and success to come babygirl??????                                                    |
+| Happy_peko_2014 | 2017-10-08 | RT @TokyoChannelD: BASE?????????????????????????????????????????????????????( ┤??)?
+??_?????????? https://t.co/NKIywNIJmw
+#????? #?????? #Bà        |
+| devyn_staahhl_  | 2017-10-08 | Happy birthday Sam!!! Miss playing with you ???? @schultzsr27                                                                                        |
+| urfathersfather | 2017-10-08 | Happy birthday brother ???? staystⁿssy ?? @lucasthurman3                                                                                            |
+| bt__happy_05    | 2017-10-08 | @ryogalove1023ao ??????????????????                                                                                                                  |
+| hana_faith98    | 2017-10-08 | RT @280Jokes: A lady returns from the doctor's with a huge grin. Her husband says "You seem happy" The wife says "The doctor said for a 45à          |
+| ShaharHameiri   | 2017-10-08 | Not sure whether to despair that @realDonaldTrump is heightening tensions again or be happy that these are clearlyà https://t.co/QCClFY3grI          |
+| TraceySim2      | 2017-10-08 | RT @RevolBoutique: Happy Thanksgiving to our entire extended family! Please note our holiday hours. ~Sat 10-5 & Mon 11-4~ Have a safe and hà         |
+| aldobogado      | 2017-10-08 | RT @TeamMilanAC: Happy Birthday Nelson Dida ????????
+
+?? 206
+SerieA ??
+CoppaItalia ??
+UEFA Super Cup ????
+SupercoppaItaliana ??
+Champions Leagueà |
+| el_venter       | 2017-10-08 | IÆve never met @amberhutchins but sheÆs an amazing profwhoÆs connected me to great info & people. A happy birthday to you!! ?? ?? ??                |
+| gisellcrystalxo | 2017-10-08 | And the drinking starts. Happy birthday to meeeeeeeeee                                                                                               |
+| Ay_Sweetheart   | 2017-10-08 | RT @_LiraGalore: Happy ? https://t.co/NLzbWCf6Ra                                                                                                     |
+| Bank_Moody      | 2017-10-08 | @daaylivessSmh happy birthday                                                                                                                       |
+| fa_deutsch      | 2017-10-08 | WirhattenzwarnurApfelkuchen, dennoch: "Happy #GermanAmericanDay!" & "Happy Grandparents Day!"  @AATGonlineà https://t.co/FrSpqTDLKl              |
+| FatDawg__       | 2017-10-08 | @jayyloww__ happy birthday brudda                                                                                                                    |
+| AirBornTrey     | 2017-10-08 | My nigga made classics yÆall! He made TIP DRILL yÆall!!!! Them hoes was happy to have em slide a credit card down the crack of theyass ??           |
+| TossSaveDonate  | 2017-10-08 | RT @morsecode: Byron Buxton health update:
+
+Happy to report multiple tests and scans of Buxton revealed no fracture.
+
+#MNTwins                      |
+| isiponhaterade  | 2017-10-08 | That would make me happy https://t.co/9jBCQftCJ4                                                                                                     |
+| Hanhula         | 2017-10-08 | @ToLOverlord59 HAPPY BIRTHDAY, OLD MAN :P Have an awesome day ^^                                                                                     |
+| ValentineVee_   | 2017-10-08 | RT @Bryaan_A1: As long as you're happy bro https://t.co/utKzqGMPp6                                                                                   |
+| laurenmfeels    | 2017-10-08 | hearing the crowd singing back to them makes my heart happy                                                                                          |
+| iGeraldAnderson | 2017-10-08 | I try so hard to be happy, I swear, but I can't.                                                                                                     |
+| Ronny_the_Bunny | 2017-10-08 | RT @FNAF_Fanpage_: Happy birthday FNAF Sister Location! I can't believe it's already been a year! https://t.co/7vfCygZHd8                            |
+| CoachMonty10    | 2017-10-08 | RT @CoachD_Phillips: Happy birthday to our fearless leader @Trevorlawrencee https://t.co/akucEvN9mS                                                  |
+| AnninhaFavaron  | 2017-10-08 | Happy dayy!                                                                                                                                          |
+| brebox23        | 2017-10-08 | @chelseyruiz07 happy birthday Chelsey!! Love and miss you!! ????????????                                                                             |
+| Honeylrn        | 2017-10-08 | RT @Shazam: Happy #WorldSmileDay!
+
+Keep on smiling ???? https://t.co/tQQ84OwYAj                                                                     |
+| srkmylovegmail1 | 2017-10-08 | Happy b'day Queen gauri mam....? https://t.co/3Qtf8wR97k                                                                                             |
+| reason4sports   | 2017-10-08 | RT @RAIDERS: 24 to 24.
+
+Happy birthday, @CharlesWoodson. https://t.co/eniIcXH1C0                                                                     |
+| girlyratfish    | 2017-10-08 | OMG YOU GUYS he let me take  #CatSelfie s!!!!
+this never happens. happy #Caturday ! https://t.co/iISvdcV09Z                                         |
+| rainyseok       | 2017-10-08 | RT @jhopecrew: Bangtan hasn't updated in 3 days (other than the fancafe) I'm so damn happy they're spending time for themselves. They deserà         |
+| teamalive9556   | 2017-10-08 | RT @TramyersNBCS: Eddie Olczyk paying us a visit at the UC tonight. Again, happy Saturday :) #Blackhawks                                             |
+| iantracy79      | 2017-10-08 | @NadineCoyleNow Hi Nadine, so happy you're back & hope there's an lp in the pipeline. I've missed my fave Girl Alouà https://t.co/DpxeAvs93E         |
+| Mogleeone       | 2017-10-08 | @FimusTauri @NoScienceDenial @MexMarc @Sillymidoff49 @DonaldKronos @omalad @Yathoon @ReedRobertson @Happy_Agnosticà https://t.co/Zk8kO0FhqE          |
+| pop_popculture  | 2017-10-08 | RT @ladygaga: Happy Birthday Sonja. Not a day goes by that I donÆt miss you. https://t.co/oHSyDsl7a5                                                 |
+| cbearamos_      | 2017-10-08 | RT @cybellestamaria: @cbearamos_ happy birthday!?? enjoy your day! Godbless??                                                                        |
++-----------------+------------+------------------------------------------------------------------------------------------------------------------------------------------------------+
+45 rows in set (0.00 sec)
+
+
+
+
+
+OUTPUT
+
+
+
+
+MENU
+1.Insert into Mysqldatabse
+2.Search by Username
+3.Display all tweets stored
+4.Sentiment Analysis
+Enter your choice:
+
+1
+
+relentless_omar
+
+Chicago, IL
+
+Sun Oct 08 05:29:59 IST 2017
+
+RT @gucci1017: Be happy You Deserve it
+
+--------------------------------------------------------------------
+
+Biebofriends
+
+
+
+Sun Oct 08 05:29:59 IST 2017
+
+RT @itakejustin: Music mondays were such a blessing I really had a reason to wake up at 6am and be happy for the rest of the week
+
+--------------------------------------------------------------------
+
+AyeeRichiee
+
+Dreamville, USA
+
+Sun Oct 08 05:29:59 IST 2017
+
+RT @datPMFmalik: Happy birthday bro @AyeeRichiee ? #morelife
+
+--------------------------------------------------------------------
+
+GivingLoveDaily
+
+
+
+Sun Oct 08 05:29:59 IST 2017
+
+RT @FactSoup: Just do whatever makes you happy.
+
+--------------------------------------------------------------------
+
+lykaaamarieee
+
+universe
+
+Sun Oct 08 05:29:59 IST 2017
+
+RT @Lloydyhoody: I am more than happy ??????
+
+--------------------------------------------------------------------
+
+awelab1956
+
+HillaryVillage, CA
+
+Sun Oct 08 05:29:59 IST 2017
+
+RT @Shelster011: Happy Access Hollywood Pussygate Day! https://t.co/xdl6w5Tupi
+
+--------------------------------------------------------------------
+
+Paisley__15
+
+NC
+
+Sun Oct 08 05:29:59 IST 2017
+
+RT @gucci1017: Be happy You Deserve it
+
+--------------------------------------------------------------------
+
+TheGreatAlxndra
+
+Manila, PH
+
+Sun Oct 08 05:29:59 IST 2017
+
+There are so many things that can make you happy. Don't dwell too much on things that make you sad.
+
+--------------------------------------------------------------------
+
+thaisserafym
+
+
+
+Sun Oct 08 05:29:59 IST 2017
+
+RT @kimjunmyeonnews: thank you for updating the exol website constantly & share every precious moments of u w exols! ??
+
+happy anniversary,…
+
+--------------------------------------------------------------------
+
+sunkissedwun
+
+toronto
+
+Sun Oct 08 05:29:59 IST 2017
+
+happy birthday @daaylivess in sha'Allah many more years of joy and success to come babygirl???
+
+--------------------------------------------------------------------
+
+Happy_peko_2014
+
+????????
+
+Sun Oct 08 05:29:59 IST 2017
+
+RT @TokyoChannelD: BASE?????????????????????????????????????????????????????( ´??)?
+?_?????????? https://t.co/NKIywNIJmw 
+#????? #?????? #B…
+
+--------------------------------------------------------------------
+
+devyn_staahhl_
+
+buffalo, ny
+
+Sun Oct 08 05:29:59 IST 2017
+
+Happy birthday Sam!!! Miss playing with you ??? @schultzsr27
+
+--------------------------------------------------------------------
+
+urfathersfather
+
+La Habra, CA
+
+Sun Oct 08 05:29:59 IST 2017
+
+Happy birthday brother ??staystüssy ? @lucasthurman3
+
+--------------------------------------------------------------------
+
+bt__happy_05
+
+????????????
+
+Sun Oct 08 05:29:58 IST 2017
+
+@ryogalove1023ao ??????????????????
+
+--------------------------------------------------------------------
+
+hana_faith98
+
+
+
+Sun Oct 08 05:29:58 IST 2017
+
+RT @280Jokes: A lady returns from the doctor's with a huge grin. Her husband says "You seem happy" The wife says "The doctor said for a 45…
+
+--------------------------------------------------------------------
+
+ShaharHameiri
+
+Brisbane, Queensland
+
+Sun Oct 08 05:29:58 IST 2017
+
+Not sure whether to despair that @realDonaldTrump is heightening tensions again or be happy that these are clearly… https://t.co/QCClFY3grI
+
+--------------------------------------------------------------------
+
+TraceySim2
+
+Canada
+
+Sun Oct 08 05:29:58 IST 2017
+
+RT @RevolBoutique: Happy Thanksgiving to our entire extended family! Please note our holiday hours. ~Sat 10-5 & Mon 11-4~ Have a safe and h…
+
+--------------------------------------------------------------------
+
+aldobogado
+
+Coronel Oviedo, Paraguay
+
+Sun Oct 08 05:29:58 IST 2017
+
+RT @TeamMilanAC: Happy Birthday Nelson Dida ?????
+
+? 206
+SerieA ?
+CoppaItalia ?
+UEFA Super Cup ??
+SupercoppaItaliana ?
+Champions League…
+
+--------------------------------------------------------------------
+
+el_venter
+
+Grand Junction, CO
+
+Sun Oct 08 05:29:58 IST 2017
+
+I’ve never met @amberhutchins but she’s an amazing prof who’s connected me to great info & people. A happy birthday to you!! ? ? ?
+
+--------------------------------------------------------------------
+
+gisellcrystalxo
+
+Indio, CA
+
+Sun Oct 08 05:29:58 IST 2017
+
+And the drinking starts. Happy birthday to meeeeeeeeee
+
+--------------------------------------------------------------------
+
+Ay_Sweetheart
+
+Houstalantavegas
+
+Sun Oct 08 05:29:58 IST 2017
+
+RT @_LiraGalore: Happy ? https://t.co/NLzbWCf6Ra
+
+--------------------------------------------------------------------
+
+Bank_Moody
+
+Detroit
+
+Sun Oct 08 05:29:58 IST 2017
+
+@daaylivessSmh happy birthday
+
+--------------------------------------------------------------------
+
+fa_deutsch
+
+Massachusetts, USA
+
+Sun Oct 08 05:29:58 IST 2017
+
+WirhattenzwarnurApfelkuchen, dennoch: "Happy #GermanAmericanDay!" & "Happy Grandparents Day!"  @AATGonline… https://t.co/FrSpqTDLKl
+
+--------------------------------------------------------------------
+
+FatDawg__
+
+
+
+Sun Oct 08 05:29:57 IST 2017
+
+@jayyloww__ happy birthday brudda
+
+--------------------------------------------------------------------
+
+AirBornTrey
+
+Bay Area
+
+Sun Oct 08 05:29:57 IST 2017
+
+My nigga made classics y’all! He made TIP DRILL y’all!!!! Them hoes was happy to have em slide a credit card down the crack of theyass ?
+
+--------------------------------------------------------------------
+
+TossSaveDonate
+
+Connecticut, USA
+
+Sun Oct 08 05:29:57 IST 2017
+
+RT @morsecode: Byron Buxton health update:
+
+Happy to report multiple tests and scans of Buxton revealed no fracture. 
+
+#MNTwins
+
+--------------------------------------------------------------------
+
+isiponhaterade
+
+
+
+Sun Oct 08 05:29:57 IST 2017
+
+That would make me happy https://t.co/9jBCQftCJ4
+
+--------------------------------------------------------------------
+
+Hanhula
+
+
+
+Sun Oct 08 05:29:57 IST 2017
+
+@ToLOverlord59 HAPPY BIRTHDAY, OLD MAN :P Have an awesome day ^^
+
+--------------------------------------------------------------------
+
+ValentineVee_
+
+Pretoria, South Africa
+
+Sun Oct 08 05:29:57 IST 2017
+
+RT @Bryaan_A1: As long as you're happy bro https://t.co/utKzqGMPp6
+
+--------------------------------------------------------------------
+
+laurenmfeels
+
+2/4
+
+Sun Oct 08 05:29:57 IST 2017
+
+hearing the crowd singing back to them makes my heart happy
+
+--------------------------------------------------------------------
+
+iGeraldAnderson
+
+MORE FUN, Philippines
+
+Sun Oct 08 05:29:57 IST 2017
+
+I try so hard to be happy, I swear, but I can't.
+
+--------------------------------------------------------------------
+
+Ronny_the_Bunny
+
+JPN.??(I'm japanese)
+
+Sun Oct 08 05:29:57 IST 2017
+
+RT @FNAF_Fanpage_: Happy birthday FNAF Sister Location! I can't believe it's already been a year! https://t.co/7vfCygZHd8
+
+--------------------------------------------------------------------
+
+CoachMonty10
+
+Georgia, USA
+
+Sun Oct 08 05:29:57 IST 2017
+
+RT @CoachD_Phillips: Happy birthday to our fearless leader @Trevorlawrencee https://t.co/akucEvN9mS
+
+--------------------------------------------------------------------
+
+AnninhaFavaron
+
+Saquarema-Brasil
+
+Sun Oct 08 05:29:57 IST 2017
+
+Happy dayy!
+
+--------------------------------------------------------------------
+
+brebox23
+
+Irving, TX
+
+Sun Oct 08 05:29:57 IST 2017
+
+@chelseyruiz07 happy birthday Chelsey!! Love and miss you!! ???????
+
+--------------------------------------------------------------------
+
+Honeylrn
+
+
+
+Sun Oct 08 05:29:57 IST 2017
+
+RT @Shazam: Happy #WorldSmileDay! 
+
+Keep on smiling ?? https://t.co/tQQ84OwYAj
+
+--------------------------------------------------------------------
+
+srkmylovegmail1
+
+
+
+Sun Oct 08 05:29:57 IST 2017
+
+Happy b'day Queen gauri mam....? https://t.co/3Qtf8wR97k
+
+--------------------------------------------------------------------
+
+reason4sports
+
+Cali/Indiana Spiritual Living
+
+Sun Oct 08 05:29:57 IST 2017
+
+RT @RAIDERS: 24 to 24.
+
+Happy birthday, @CharlesWoodson. https://t.co/eniIcXH1C0
+
+--------------------------------------------------------------------
+
+girlyratfish
+
+The Insular Belt, Wrangellia
+
+Sun Oct 08 05:29:57 IST 2017
+
+OMG YOU GUYS he let me take  #CatSelfie s!!!! 
+this never happens. happy #Caturday ! https://t.co/iISvdcV09Z
+
+--------------------------------------------------------------------
+
+rainyseok
+
+#? ???
+
+Sun Oct 08 05:29:57 IST 2017
+
+RT @jhopecrew: Bangtan hasn't updated in 3 days (other than the fancafe) I'm so damn happy they're spending time for themselves. They deser…
+
+--------------------------------------------------------------------
+
+teamalive9556
+
+
+
+Sun Oct 08 05:29:57 IST 2017
+
+RT @TramyersNBCS: Eddie Olczyk paying us a visit at the UC tonight. Again, happy Saturday :) #Blackhawks
+
+--------------------------------------------------------------------
+
+iantracy79
+
+Dun Laoghaire, Dublin, Ireland
+
+Sun Oct 08 05:29:57 IST 2017
+
+@NadineCoyleNow Hi Nadine, so happy you're back & hope there's an lp in the pipeline. I've missed my fave Girl Alou… https://t.co/DpxeAvs93E
+
+--------------------------------------------------------------------
+
+Mogleeone
+
+
+
+Sun Oct 08 05:29:57 IST 2017
+
+@FimusTauri @NoScienceDenial @MexMarc @Sillymidoff49 @DonaldKronos @omalad @Yathoon @ReedRobertson @Happy_Agnostic… https://t.co/Zk8kO0FhqE
+
+--------------------------------------------------------------------
+
+pop_popculture
+
+
+
+Sun Oct 08 05:29:56 IST 2017
+
+RT @ladygaga: Happy Birthday Sonja. Not a day goes by that I don’t miss you. https://t.co/oHSyDsl7a5
+
+--------------------------------------------------------------------
+
+cbearamos_
+
+moiradelatorre ?
+
+Sun Oct 08 05:29:56 IST 2017
+
+RT @cybellestamaria: @cbearamos_ happy birthday!? enjoy your day! Godbless??
+
+--------------------------------------------------------------------
+
+welovenamusic
+
+??
+
+Sun Oct 08 05:29:56 IST 2017
+
+@zakuro1968 ??????HAPPY BIRTHDAY?(*^^)o?*?o(^^*)?
+
+????????????????(???
+
+--------------------------------------------------------------------
+
+MsOdin2
+
+
+
+Sun Oct 08 05:29:56 IST 2017
+
+@gordbamford Thank you @gordbamford ?
+Happy Thanksgiving to you and your family too! 
+#getthemsweatpantson ?
+
+--------------------------------------------------------------------
+
+avekamiyama
+
+room
+
+Sun Oct 08 05:29:56 IST 2017
+
+Happy Sunday, smile mgamamsh ??
+
+--------------------------------------------------------------------
+
+aliencarla
+
+LOVE YOURSELF
+
+Sun Oct 08 05:29:56 IST 2017
+
+RT @LucyFairyfilia: Happy HalloweebPumpinks! 
+
+Fairy Tail Edition!! ? https://t.co/MJs9DN5B3X
+
+--------------------------------------------------------------------
+
+kikirizqi95
+
+Medan,Indonesia
+
+Sun Oct 08 05:29:56 IST 2017
+
+RT @ChelseaFC: Wishing @diegocosta a happy birthday! ? https://t.co/NwuwfWc2o8
+
+--------------------------------------------------------------------
+
+allymaeeeeee
+
+kenneth's ?
+
+Sun Oct 08 05:29:56 IST 2017
+
+RT @myunwrittensoul: "I just want to be happy."
+
+--------------------------------------------------------------------
+
+Alizaamonet
+
+
+
+Sun Oct 08 05:29:56 IST 2017
+
+RT @Drebae_: It’s okay to be selfish. Better yourself & focus on what makes you happy. If you don’t put yourself first who will sis? Self l…
+
+--------------------------------------------------------------------
+
+latalefan1985
+
+Old Forge, PA
+
+Sun Oct 08 05:29:56 IST 2017
+
+@SaiEvermore Please do a stick art with X and Zero on it so I can die happy. Thanks! ?? #TeamMaverickHunters
+
+--------------------------------------------------------------------
+
+CFox93
+
+Davenport, IA
+
+Sun Oct 08 05:29:56 IST 2017
+
+RT @coachberg65: Happy birthday coach @BatMandervelde thanks for being such a great coach and influence for these young guns! ????
+
+--------------------------------------------------------------------
+
+ellayqueen
+
+Daet, Bicol Region
+
+Sun Oct 08 05:29:55 IST 2017
+
+Happy birthday to me???
+
+--------------------------------------------------------------------
+
+Libby_Zender
+
+dayton, oh
+
+Sun Oct 08 05:29:55 IST 2017
+
+RT @justjamiie: happy thot-o-ween! https://t.co/9a2rIigr4T
+
+--------------------------------------------------------------------
+
+KyVorhVeE1Z6fLW
+
+
+
+Sun Oct 08 05:29:55 IST 2017
+
+RT @BUMP_OF_C: ???????????? ???????????????                               HAPPY?
+
+--------------------------------------------------------------------
+
+FuzzBeedEli
+
+KCMO
+
+Sun Oct 08 05:29:55 IST 2017
+
+Zobrist’s happy feet on fly balls are giving me anxiety.
+
+--------------------------------------------------------------------
+
+asapdaya
+
+
+
+Sun Oct 08 05:29:55 IST 2017
+
+happy 3 yrs to the album that gave us How Many Times and 2 On. westan
+https://t.co/lfGKaONwtb
+
+--------------------------------------------------------------------
+
+NatRV74
+
+
+
+Sun Oct 08 05:29:55 IST 2017
+
+RT @serenadyo: Taejoon; A happy holiday with the giants.
+
+Chanyeol’s comment: LOL agreed, the giants. https://t.co/Tb1PJYChTC
+
+--------------------------------------------------------------------
+
+MENU
+1.Insert into Mysqldatabse
+2.Search by Username
+3.Display all tweets stored
+4.Sentiment Analysis
+Enter your choice:
+
+2
+
+Enter username to search: 
+NatRV74
+
+------------------------------------------------------------------------------------------------------------
+
+Name: NatRV74
+
+Date: 2017-10-08
+
+Tweet: RT @serenadyo: Taejoon; A happy holiday with the giants.
+
+Chanyeol’s comment: LOL agreed, the giants. https://t.co/Tb1PJYChTC
+
+
+
+MENU
+1.Insert into Mysqldatabse
+2.Search by Username
+3.Display all tweets stored
+4.Sentiment Analysis
+Enter your choice:
+
+3
+
+------------------------------------------------------------------------------------------------------------
+
+Name: relentless_omar
+
+Date: 2017-10-08
+
+Tweet: RT @gucci1017: Be happy You Deserve it
+
+------------------------------------------------------------------------------------------------------------
+
+Name: Biebofriends
+
+Date: 2017-10-08
+
+Tweet: RT @itakejustin: Music mondays were such a blessing I really had a reason to wake up at 6am and be happy for the rest of the week
+
+------------------------------------------------------------------------------------------------------------
+
+Name: AyeeRichiee
+
+Date: 2017-10-08
+
+Tweet: RT @datPMFmalik: Happy birthday bro @AyeeRichiee ?? #morelife
+
+------------------------------------------------------------------------------------------------------------
+
+Name: GivingLoveDaily
+
+Date: 2017-10-08
+
+Tweet: RT @FactSoup: Just do whatever makes you happy.
+
+------------------------------------------------------------------------------------------------------------
+
+Name: lykaaamarieee
+
+Date: 2017-10-08
+
+Tweet: RT @Lloydyhoody: I am more than happy ?????????
+
+------------------------------------------------------------------------------------------------------------
+
+Name: awelab1956
+
+Date: 2017-10-08
+
+Tweet: RT @Shelster011: Happy Access Hollywood Pussygate Day! https://t.co/xdl6w5Tupi
+
+------------------------------------------------------------------------------------------------------------
+
+Name: Paisley__15
+
+Date: 2017-10-08
+
+Tweet: RT @gucci1017: Be happy You Deserve it
+
+------------------------------------------------------------------------------------------------------------
+
+Name: TheGreatAlxndra
+
+Date: 2017-10-08
+
+Tweet: There are so many things that can make you happy. Don't dwell too much on things that make you sad.
+
+------------------------------------------------------------------------------------------------------------
+
+Name: thaisserafym
+
+Date: 2017-10-08
+
+Tweet: RT @kimjunmyeonnews: thank you for updating the exol website constantly & share every precious moments of u w exols! ???
+
+happy anniversary,…
+
+------------------------------------------------------------------------------------------------------------
+
+Name: sunkissedwun
+
+Date: 2017-10-08
+
+Tweet: happy birthday @daaylivess in sha'Allah many more years of joy and success to come babygirl??????
+
+------------------------------------------------------------------------------------------------------------
+
+Name: Happy_peko_2014
+
+Date: 2017-10-08
+
+Tweet: RT @TokyoChannelD: BASE?????????????????????????????????????????????????????( ´??)?
+??_?????????? https://t.co/NKIywNIJmw 
+#????? #?????? #B…
+
+------------------------------------------------------------------------------------------------------------
+
+Name: devyn_staahhl_
+
+Date: 2017-10-08
+
+Tweet: Happy birthday Sam!!! Miss playing with you ???? @schultzsr27
+
+------------------------------------------------------------------------------------------------------------
+
+Name: urfathersfather
+
+Date: 2017-10-08
+
+Tweet: Happy birthday brother ????staystüssy ?? @lucasthurman3
+
+------------------------------------------------------------------------------------------------------------
+
+Name: bt__happy_05
+
+Date: 2017-10-08
+
+Tweet: @ryogalove1023ao ??????????????????
+
+------------------------------------------------------------------------------------------------------------
+
+Name: hana_faith98
+
+Date: 2017-10-08
+
+Tweet: RT @280Jokes: A lady returns from the doctor's with a huge grin. Her husband says "You seem happy" The wife says "The doctor said for a 45…
+
+------------------------------------------------------------------------------------------------------------
+
+Name: ShaharHameiri
+
+Date: 2017-10-08
+
+Tweet: Not sure whether to despair that @realDonaldTrump is heightening tensions again or be happy that these are clearly… https://t.co/QCClFY3grI
+
+------------------------------------------------------------------------------------------------------------
+
+Name: TraceySim2
+
+Date: 2017-10-08
+
+Tweet: RT @RevolBoutique: Happy Thanksgiving to our entire extended family! Please note our holiday hours. ~Sat 10-5 & Mon 11-4~ Have a safe and h…
+
+------------------------------------------------------------------------------------------------------------
+
+Name: aldobogado
+
+Date: 2017-10-08
+
+Tweet: RT @TeamMilanAC: Happy Birthday Nelson Dida ????????
+
+?? 206
+SerieA ??
+CoppaItalia ??
+UEFA Super Cup ????
+SupercoppaItaliana ??
+Champions League…
+
+------------------------------------------------------------------------------------------------------------
+
+Name: el_venter
+
+Date: 2017-10-08
+
+Tweet: I’ve never met @amberhutchins but she’s an amazing prof who’s connected me to great info & people. A happy birthday to you!! ?? ?? ??
+
+------------------------------------------------------------------------------------------------------------
+
+Name: gisellcrystalxo
+
+Date: 2017-10-08
+
+Tweet: And the drinking starts. Happy birthday to meeeeeeeeee
+
+------------------------------------------------------------------------------------------------------------
+
+Name: Ay_Sweetheart
+
+Date: 2017-10-08
+
+Tweet: RT @_LiraGalore: Happy ? https://t.co/NLzbWCf6Ra
+
+------------------------------------------------------------------------------------------------------------
+
+Name: Bank_Moody
+
+Date: 2017-10-08
+
+Tweet: @daaylivessSmh happy birthday
+
+------------------------------------------------------------------------------------------------------------
+
+Name: fa_deutsch
+
+Date: 2017-10-08
+
+Tweet: WirhattenzwarnurApfelkuchen, dennoch: "Happy #GermanAmericanDay!" & "Happy Grandparents Day!"  @AATGonline… https://t.co/FrSpqTDLKl
+
+------------------------------------------------------------------------------------------------------------
+
+Name: FatDawg__
+
+Date: 2017-10-08
+
+Tweet: @jayyloww__ happy birthday brudda
+
+------------------------------------------------------------------------------------------------------------
+
+Name: AirBornTrey
+
+Date: 2017-10-08
+
+Tweet: My nigga made classics y’all! He made TIP DRILL y’all!!!! Them hoes was happy to have em slide a credit card down the crack of theyass ??
+
+------------------------------------------------------------------------------------------------------------
+
+Name: TossSaveDonate
+
+Date: 2017-10-08
+
+Tweet: RT @morsecode: Byron Buxton health update:
+
+Happy to report multiple tests and scans of Buxton revealed no fracture. 
+
+#MNTwins
+
+------------------------------------------------------------------------------------------------------------
+
+Name: isiponhaterade
+
+Date: 2017-10-08
+
+Tweet: That would make me happy https://t.co/9jBCQftCJ4
+
+------------------------------------------------------------------------------------------------------------
+
+Name: Hanhula
+
+Date: 2017-10-08
+
+Tweet: @ToLOverlord59 HAPPY BIRTHDAY, OLD MAN :P Have an awesome day ^^
+
+------------------------------------------------------------------------------------------------------------
+
+Name: ValentineVee_
+
+Date: 2017-10-08
+
+Tweet: RT @Bryaan_A1: As long as you're happy bro https://t.co/utKzqGMPp6
+
+------------------------------------------------------------------------------------------------------------
+
+Name: laurenmfeels
+
+Date: 2017-10-08
+
+Tweet: hearing the crowd singing back to them makes my heart happy
+
+------------------------------------------------------------------------------------------------------------
+
+Name: iGeraldAnderson
+
+Date: 2017-10-08
+
+Tweet: I try so hard to be happy, I swear, but I can't.
+
+------------------------------------------------------------------------------------------------------------
+
+Name: Ronny_the_Bunny
+
+Date: 2017-10-08
+
+Tweet: RT @FNAF_Fanpage_: Happy birthday FNAF Sister Location! I can't believe it's already been a year! https://t.co/7vfCygZHd8
+
+------------------------------------------------------------------------------------------------------------
+
+Name: CoachMonty10
+
+Date: 2017-10-08
+
+Tweet: RT @CoachD_Phillips: Happy birthday to our fearless leader @Trevorlawrencee https://t.co/akucEvN9mS
+
+------------------------------------------------------------------------------------------------------------
+
+Name: AnninhaFavaron
+
+Date: 2017-10-08
+
+Tweet: Happy dayy!
+
+------------------------------------------------------------------------------------------------------------
+
+Name: brebox23
+
+Date: 2017-10-08
+
+Tweet: @chelseyruiz07 happy birthday Chelsey!! Love and miss you!! ????????????
+
+------------------------------------------------------------------------------------------------------------
+
+Name: Honeylrn
+
+Date: 2017-10-08
+
+Tweet: RT @Shazam: Happy #WorldSmileDay! 
+
+Keep on smiling ???? https://t.co/tQQ84OwYAj
+
+------------------------------------------------------------------------------------------------------------
+
+Name: srkmylovegmail1
+
+Date: 2017-10-08
+
+Tweet: Happy b'day Queen gauri mam....? https://t.co/3Qtf8wR97k
+
+------------------------------------------------------------------------------------------------------------
+
+Name: reason4sports
+
+Date: 2017-10-08
+
+Tweet: RT @RAIDERS: 24 to 24.
+
+Happy birthday, @CharlesWoodson. https://t.co/eniIcXH1C0
+
+------------------------------------------------------------------------------------------------------------
+
+Name: girlyratfish
+
+Date: 2017-10-08
+
+Tweet: OMG YOU GUYS he let me take  #CatSelfie s!!!! 
+this never happens. happy #Caturday ! https://t.co/iISvdcV09Z
+
+------------------------------------------------------------------------------------------------------------
+
+Name: rainyseok
+
+Date: 2017-10-08
+
+Tweet: RT @jhopecrew: Bangtan hasn't updated in 3 days (other than the fancafe) I'm so damn happy they're spending time for themselves. They deser…
+
+------------------------------------------------------------------------------------------------------------
+
+Name: teamalive9556
+
+Date: 2017-10-08
+
+Tweet: RT @TramyersNBCS: Eddie Olczyk paying us a visit at the UC tonight. Again, happy Saturday :) #Blackhawks
+
+------------------------------------------------------------------------------------------------------------
+
+Name: iantracy79
+
+Date: 2017-10-08
+
+Tweet: @NadineCoyleNow Hi Nadine, so happy you're back & hope there's an lp in the pipeline. I've missed my fave Girl Alou… https://t.co/DpxeAvs93E
+
+------------------------------------------------------------------------------------------------------------
+
+Name: Mogleeone
+
+Date: 2017-10-08
+
+Tweet: @FimusTauri @NoScienceDenial @MexMarc @Sillymidoff49 @DonaldKronos @omalad @Yathoon @ReedRobertson @Happy_Agnostic… https://t.co/Zk8kO0FhqE
+
+------------------------------------------------------------------------------------------------------------
+
+Name: pop_popculture
+
+Date: 2017-10-08
+
+Tweet: RT @ladygaga: Happy Birthday Sonja. Not a day goes by that I don’t miss you. https://t.co/oHSyDsl7a5
+
+------------------------------------------------------------------------------------------------------------
+
+Name: cbearamos_
+
+Date: 2017-10-08
+
+Tweet: RT @cybellestamaria: @cbearamos_ happy birthday!?? enjoy your day! Godbless??
+
+------------------------------------------------------------------------------------------------------------
+
+Name: welovenamusic
+
+Date: 2017-10-08
+
+Tweet: @zakuro1968 ??????HAPPY BIRTHDAY?(*^^)o?*?o(^^*)?
+
+????????????????(???
+
+------------------------------------------------------------------------------------------------------------
+
+Name: MsOdin2
+
+Date: 2017-10-08
+
+Tweet: @gordbamford Thank you @gordbamford ??
+Happy Thanksgiving to you and your family too! 
+#getthemsweatpantson ??
+
+------------------------------------------------------------------------------------------------------------
+
+Name: avekamiyama
+
+Date: 2017-10-08
+
+Tweet: Happy Sunday, smile mgamamsh ??
+
+------------------------------------------------------------------------------------------------------------
+
+Name: aliencarla
+
+Date: 2017-10-08
+
+Tweet: RT @LucyFairyfilia: Happy HalloweebPumpinks! 
+
+Fairy Tail Edition!! ?? https://t.co/MJs9DN5B3X
+
+------------------------------------------------------------------------------------------------------------
+
+Name: kikirizqi95
+
+Date: 2017-10-08
+
+Tweet: RT @ChelseaFC: Wishing @diegocosta a happy birthday! ?? https://t.co/NwuwfWc2o8
+
+------------------------------------------------------------------------------------------------------------
+
+Name: allymaeeeeee
+
+Date: 2017-10-08
+
+Tweet: RT @myunwrittensoul: "I just want to be happy."
+
+------------------------------------------------------------------------------------------------------------
+
+Name: Alizaamonet
+
+Date: 2017-10-08
+
+Tweet: RT @Drebae_: It’s okay to be selfish. Better yourself & focus on what makes you happy. If you don’t put yourself first who will sis? Self l…
+
+------------------------------------------------------------------------------------------------------------
+
+Name: latalefan1985
+
+Date: 2017-10-08
+
+Tweet: @SaiEvermore Please do a stick art with X and Zero on it so I can die happy. Thanks! ???? #TeamMaverickHunters
+
+------------------------------------------------------------------------------------------------------------
+
+Name: CFox93
+
+Date: 2017-10-08
+
+Tweet: RT @coachberg65: Happy birthday coach @BatMandervelde thanks for being such a great coach and influence for these young guns! ??????
+
+------------------------------------------------------------------------------------------------------------
+
+Name: ellayqueen
+
+Date: 2017-10-08
+
+Tweet: Happy birthday to me??????
+
+------------------------------------------------------------------------------------------------------------
+
+Name: Libby_Zender
+
+Date: 2017-10-08
+
+Tweet: RT @justjamiie: happy thot-o-ween! https://t.co/9a2rIigr4T
+
+------------------------------------------------------------------------------------------------------------
+
+Name: KyVorhVeE1Z6fLW
+
+Date: 2017-10-08
+
+Tweet: RT @BUMP_OF_C: ???????????? ???????????????                               HAPPY?
+
+------------------------------------------------------------------------------------------------------------
+
+Name: FuzzBeedEli
+
+Date: 2017-10-08
+
+Tweet: Zobrist’s happy feet on fly balls are giving me anxiety.
+
+------------------------------------------------------------------------------------------------------------
+
+Name: asapdaya
+
+Date: 2017-10-08
+
+Tweet: happy 3 yrs to the album that gave us How Many Times and 2 On. westan
+https://t.co/lfGKaONwtb
+
+------------------------------------------------------------------------------------------------------------
+
+Name: NatRV74
+
+Date: 2017-10-08
+
+Tweet: RT @serenadyo: Taejoon; A happy holiday with the giants.
+
+Chanyeol’s comment: LOL agreed, the giants. https://t.co/Tb1PJYChTC
+
+
+
+MENU
+1.Insert into Mysqldatabse
+2.Search by Username
+3.Display all tweets stored
+4.Sentiment Analysis
+Enter your choice:
+
+4
+Searching for resource: Configure.properties ... found.
+Adding annotator tokenize
+No tokenizer type provided. Defaulting to PTBTokenizer.
+Adding annotator ssplit
+Adding annotator parse
+Loading parser from serialized file edu/stanford/nlp/models/lexparser/englishPCFG.ser.gz ... done [1.8 sec].
+Adding annotator sentiment
+Positive		3	RT @gucci1017: Be happy You Deserve it
+Negative		1	RT @itakejustin: Music mondays were such a blessing I really had a reason to wake up at 6am and be happy for the rest of the week
+Neutral		2	RT @datPMFmalik: Happy birthday bro @AyeeRichiee ??
+Neutral		2	#morelife
+Negative		1	RT @FactSoup: Just do whatever makes you happy.
+Positive		3	RT @Lloydyhoody: I am more than happy ?????????
+Positive		3	RT @Shelster011: Happy Access Hollywood Pussygate Day!
+Neutral		2	https://t.co/xdl6w5Tupi
+Positive		3	RT @gucci1017: Be happy You Deserve it
+Positive		3	There are so many things that can make you happy.
+Neutral		2	Don't dwell too much on things that make you sad.
+Positive		3	RT @kimjunmyeonnews: thank you for updating the exol website constantly & share every precious moments of u w exols!
+Neutral		2	???
+Positive		3	happy anniversary,…
+Positive		3	happy birthday @daaylivess in sha'Allah many more years of joy and success to come babygirl??????
+Neutral		2	RT @TokyoChannelD: BASE?????????????????????????????????????????????????????
+Neutral		2	( ´??)
+Neutral		2	?
+Neutral		2	??
+Neutral		2	_??????????
+Neutral		2	https://t.co/NKIywNIJmw 
+#?????
+Neutral		2	#??????
+Neutral		2	#B…
+Neutral		2	Happy birthday Sam!!!
+Neutral		2	Miss playing with you ????
+Neutral		2	@schultzsr27
+Neutral		2	Happy birthday brother ????
+Neutral		2	stay stüssy ??
+Neutral		2	@lucasthurman3
+Neutral		2	@ryogalove1023ao ??????????????????
+Positive		3	RT @280Jokes: A lady returns from the doctor's with a huge grin.
+Negative		1	Her husband says "You seem happy" The wife says "The doctor said for a 45…
+Neutral		2	Not sure whether to despair that @realDonaldTrump is heightening tensions again or be happy that these are clearly… https://t.co/QCClFY3grI
+Positive		3	RT @RevolBoutique: Happy Thanksgiving to our entire extended family!
+Neutral		2	Please note our holiday hours.
+Negative		1	~Sat 10-5 & Mon 11-4~ Have a safe and h…
+Positive		3	RT @TeamMilanAC: Happy Birthday Nelson Dida ????????
+Neutral		2	??
+Neutral		2	206
+SerieA ??
+Neutral		2	CoppaItalia ??
+Neutral		2	UEFA Super Cup ????
+Neutral		2	SupercoppaItaliana ??
+Neutral		2	Champions League…
+Positive		3	I’ve never met @amberhutchins but she’s an amazing prof who’s connected me to great info & people.
+Positive		3	A happy birthday to you!!
+Neutral		2	??
+Neutral		2	??
+Neutral		2	??
+Negative		1	And the drinking starts.
+Neutral		2	Happy birthday to meeeeeeeeee
+Neutral		2	RT @_LiraGalore: Happy ?
+Neutral		2	https://t.co/NLzbWCf6Ra
+Positive		3	@daaylivessSmh happy birthday
+Positive		3	WirhattenzwarnurApfelkuchen, dennoch: "Happy #GermanAmericanDay!"
+Positive		3	& "Happy Grandparents Day!"
+Neutral		2	@AATGonline… https://t.co/FrSpqTDLKl
+Positive		3	@jayyloww__ happy birthday brudda
+Positive		3	My nigga made classics y’all!
+Negative		1	He made TIP DRILL y’all!!!!
+Neutral		2	Them hoes was happy to have em slide a credit card down the crack of theyass ??
+Negative		1	RT @morsecode: Byron Buxton health update:
+
+Happy to report multiple tests and scans of Buxton revealed no fracture.
+Neutral		2	#MNTwins
+Positive		3	That would make me happy https://t.co/9jBCQftCJ4
+Negative		1	@ToLOverlord59 HAPPY BIRTHDAY, OLD MAN :P Have an awesome day ^^
+Positive		3	RT @Bryaan_A1: As long as you're happy bro https://t.co/utKzqGMPp6
+Very positive		4	hearing the crowd singing back to them makes my heart happy
+Positive		3	I try so hard to be happy, I swear, but I can't.
+Positive		3	RT @FNAF_Fanpage_: Happy birthday FNAF Sister Location!
+Negative		1	I can't believe it's already been a year!
+Neutral		2	https://t.co/7vfCygZHd8
+Negative		1	RT @CoachD_Phillips: Happy birthday to our fearless leader @Trevorlawrencee https://t.co/akucEvN9mS
+Positive		3	Happy dayy!
+Positive		3	@chelseyruiz07 happy birthday Chelsey!!
+Neutral		2	Love and miss you!!
+Neutral		2	????????????
+Positive		3	RT @Shazam: Happy #WorldSmileDay!
+Neutral		2	Keep on smiling ????
+Neutral		2	https://t.co/tQQ84OwYAj
+Negative		1	Happy b'day Queen gauri mam....?
+Neutral		2	https://t.co/3Qtf8wR97k
+Negative		1	RT @RAIDERS: 24 to 24.
+Positive		3	Happy birthday, @CharlesWoodson.
+Neutral		2	https://t.co/eniIcXH1C0
+Neutral		2	OMG YOU GUYS he let me take  #CatSelfie s!!!!
+Neutral		2	this never happens.
+Positive		3	happy #Caturday !
+Neutral		2	https://t.co/iISvdcV09Z
+Negative		1	RT @jhopecrew: Bangtan hasn't updated in 3 days (other than the fancafe) I'm so damn happy they're spending time for themselves.
+Neutral		2	They deser…
+Negative		1	RT @TramyersNBCS: Eddie Olczyk paying us a visit at the UC tonight.
+Positive		3	Again, happy Saturday :) #Blackhawks
+Positive		3	@NadineCoyleNow Hi Nadine, so happy you're back & hope there's an lp in the pipeline.
+Negative		1	I've missed my fave Girl Alou… https://t.co/DpxeAvs93E
+Negative		1	@FimusTauri @NoScienceDenial @MexMarc @Sillymidoff49 @DonaldKronos @omalad @Yathoon @ReedRobertson @Happy_Agnostic… https://t.co/Zk8kO0FhqE
+Positive		3	RT @ladygaga: Happy Birthday Sonja.
+Negative		1	Not a day goes by that I don’t miss you.
+Neutral		2	https://t.co/oHSyDsl7a5
+Positive		3	RT @cybellestamaria: @cbearamos_ happy birthday!??
+Positive		3	enjoy your day!
+Neutral		2	Godbless??
+Neutral		2	@zakuro1968 ??????
+Neutral		2	HAPPY BIRTHDAY?
+Negative		1	(*^^)o?
+Neutral		2	*?
+Negative		1	o(^^*)?
+Neutral		2	????????????????
+Neutral		2	(???
+Neutral		2	@gordbamford Thank you @gordbamford ??
+Positive		3	Happy Thanksgiving to you and your family too!
+Neutral		2	#getthemsweatpantson ??
+Positive		3	Happy Sunday, smile mgamamsh ??
+Positive		3	RT @LucyFairyfilia: Happy HalloweebPumpinks!
+Neutral		2	Fairy Tail Edition!!
+Neutral		2	??
+Neutral		2	https://t.co/MJs9DN5B3X
+Positive		3	RT @ChelseaFC: Wishing @diegocosta a happy birthday!
+Neutral		2	??
+Neutral		2	https://t.co/NwuwfWc2o8
+Positive		3	RT @myunwrittensoul: "I just want to be happy."
+Negative		1	RT @Drebae_: It’s okay to be selfish.
+Positive		3	Better yourself & focus on what makes you happy.
+Neutral		2	If you don’t put yourself first who will sis?
+Neutral		2	Self l…
+Positive		3	@SaiEvermore Please do a stick art with X and Zero on it so I can die happy.
+Positive		3	Thanks!
+Neutral		2	????
+Neutral		2	#TeamMaverickHunters
+Positive		3	RT @coachberg65: Happy birthday coach @BatMandervelde thanks for being such a great coach and influence for these young guns!
+Neutral		2	??????
+Neutral		2	Happy birthday to me??????
+Positive		3	RT @justjamiie: happy thot-o-ween!
+Neutral		2	https://t.co/9a2rIigr4T
+Neutral		2	RT @BUMP_OF_C: ????????????
+Neutral		2	???????????????
+Neutral		2	HAPPY?
+Positive		3	Zobrist’s happy feet on fly balls are giving me anxiety.
+Positive		3	happy 3 yrs to the album that gave us How Many Times and 2 On.
+Neutral		2	we stan
+https://t.co/lfGKaONwtb
+Positive		3	RT @serenadyo: Taejoon; A happy holiday with the giants.
+Negative		1	Chanyeol’s comment: LOL agreed, the giants.
+Neutral		2	https://t.co/Tb1PJYChTC
+
